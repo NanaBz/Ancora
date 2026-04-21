@@ -190,14 +190,15 @@ class _CaregiverClientsPageState extends State<CaregiverClientsPage> {
 
   double _monthAdherence(List<QueryDocumentSnapshot> logs) {
     final now = DateTime.now();
-    final monthStart = DateTime(now.year, now.month, 1);
+    final todayStart = DateTime(now.year, now.month, now.day);
+    final todayEnd = todayStart.add(const Duration(days: 1));
     int taken = 0, total = 0;
     for (final log in logs) {
       final data = log.data() as Map<String, dynamic>;
       final ts = data['scheduledAt'] as Timestamp?;
       if (ts == null) continue;
       final dt = ts.toDate();
-      if (dt.isBefore(monthStart) || dt.isAfter(now)) continue;
+      if (dt.isBefore(todayStart) || dt.isAfter(todayEnd)) continue;
       total++;
       if ((data['status'] as String?) == 'taken') taken++;
     }
