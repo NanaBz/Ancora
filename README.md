@@ -82,6 +82,7 @@ These files contain API keys and are not committed to the repository. Get them f
 |---|---|
 | `google-services.json` | `android/app/google-services.json` |
 | `firebase_options.dart` | `lib/firebase_options.dart` |
+| `firebase-messaging-sw.js` | `web/firebase-messaging-sw.js` (copy `web/firebase-messaging-sw.js.example` and fill in your Firebase web config) |
 
 ### 3. Install dependencies
 
