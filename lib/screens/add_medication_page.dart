@@ -5,7 +5,10 @@ import '../theme/app_theme.dart';
 import '../services/notification_service.dart';
 
 class AddMedicationPage extends StatefulWidget {
-  const AddMedicationPage({Key? key}) : super(key: key);
+  final String? editMedId;
+  final Map<String, dynamic>? editMedData;
+
+  const AddMedicationPage({Key? key, this.editMedId, this.editMedData}) : super(key: key);
 
   @override
   State<AddMedicationPage> createState() => _AddMedicationPageState();
@@ -38,6 +41,34 @@ class _AddMedicationPageState extends State<AddMedicationPage> {
     'Three Times Daily': 3,
     'Custom': 1,
   };
+
+  @override
+  void initState() {
+    super.initState();
+    final data = widget.editMedData;
+    if (data != null) {
+      _nameCtrl.text = (data['name'] as String?) ?? '';
+      _dosageCtrl.text = (data['dosage'] ?? '').toString();
+      _selectedUnit = (data['unit'] as String?) ?? 'mg';
+      _selectedType = (data['medType'] as String?) ?? 'Tablet';
+      _selectedFrequency = (data['frequency'] as String?) ?? 'Once Daily';
+
+      final times = List<String>.from(data['intakeTimes'] ?? []);
+      if (times.isNotEmpty) {
+        _intakeTimes = times.map((t) {
+          final parts = t.split(':');
+          final h = int.tryParse(parts[0]) ?? 8;
+          final m = parts.length > 1 ? (int.tryParse(parts[1]) ?? 0) : 0;
+          return TimeOfDay(hour: h, minute: m);
+        }).toList();
+      }
+
+      final startTs = data['startDate'] as Timestamp?;
+      final endTs = data['endDate'] as Timestamp?;
+      if (startTs != null) _startDate = startTs.toDate();
+      if (endTs != null) _endDate = endTs.toDate();
+    }
+  }
 
   @override
   void dispose() {
@@ -138,32 +169,53 @@ class _AddMedicationPageState extends State<AddMedicationPage> {
               '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}')
           .toList();
 
-      final docRef =
-          await db.collection('users').doc(uid).collection('medications').add({
+      final payload = {
         'name': name,
         'dosage': dosage,
         'unit': _selectedUnit,
         'medType': _selectedType,
         'frequency': _selectedFrequency,
         'intakeTimes': times,
-        'startDate': Timestamp.fromDate(
-            DateTime(_startDate!.year, _startDate!.month, _startDate!.day)),
-        'endDate': Timestamp.fromDate(
-            DateTime(_endDate!.year, _endDate!.month, _endDate!.day)),
-        'createdAt': FieldValue.serverTimestamp(),
-      });
+        'startDate': Timestamp.fromDate(DateTime(_startDate!.year, _startDate!.month, _startDate!.day)),
+        'endDate': Timestamp.fromDate(DateTime(_endDate!.year, _endDate!.month, _endDate!.day)),
+      };
 
-      await NotificationService.scheduleMedication(
-        medId: docRef.id,
-        medName: name,
-        intakeTimes: times,
-        startDate: _startDate!,
-        endDate: _endDate!,
-      );
-
-      if (mounted) {
-        _snack('Medication added.');
-        Navigator.of(context).pushReplacementNamed('/home');
+      if (widget.editMedId != null) {
+        await db
+            .collection('users')
+            .doc(uid)
+            .collection('medications')
+            .doc(widget.editMedId)
+            .update(payload);
+        await NotificationService.cancelMedication(widget.editMedId!);
+        await NotificationService.scheduleMedication(
+          medId: widget.editMedId!,
+          medName: name,
+          intakeTimes: times,
+          startDate: _startDate!,
+          endDate: _endDate!,
+        );
+        if (mounted) {
+          _snack('Medication updated.');
+          Navigator.of(context).pop();
+        }
+      } else {
+        final docRef = await db
+            .collection('users')
+            .doc(uid)
+            .collection('medications')
+            .add({...payload, 'createdAt': FieldValue.serverTimestamp()});
+        await NotificationService.scheduleMedication(
+          medId: docRef.id,
+          medName: name,
+          intakeTimes: times,
+          startDate: _startDate!,
+          endDate: _endDate!,
+        );
+        if (mounted) {
+          _snack('Medication added.');
+          Navigator.of(context).pushReplacementNamed('/home');
+        }
       }
     } catch (e) {
       if (mounted) _snack('Error: $e');
@@ -183,9 +235,11 @@ class _AddMedicationPageState extends State<AddMedicationPage> {
 
   @override
   Widget build(BuildContext context) {
+    final isEdit = widget.editMedId != null;
+
     return Scaffold(
       backgroundColor: Colors.white,
-      bottomNavigationBar: _BottomNavBar(selectedIndex: 2),
+      bottomNavigationBar: isEdit ? null : _BottomNavBar(selectedIndex: 2),
       body: SafeArea(
         child: SingleChildScrollView(
           child: Padding(
@@ -197,8 +251,14 @@ class _AddMedicationPageState extends State<AddMedicationPage> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
+                    if (isEdit)
+                      IconButton(
+                        icon: const Icon(Icons.arrow_back),
+                        onPressed: () => Navigator.of(context).pop(),
+                        color: AppTheme.primaryColor,
+                      ),
                     Text(
-                      'Add Medication',
+                      isEdit ? 'Edit Medication' : 'Add Medication',
                       style: TextStyle(
                         color: AppTheme.primaryColor,
                         fontSize: 24,
@@ -449,11 +509,13 @@ class _AddMedicationPageState extends State<AddMedicationPage> {
                             child: CircularProgressIndicator(
                                 color: Colors.white, strokeWidth: 2),
                           )
-                        : const Text('Save Medication',
-                            style: TextStyle(
+                        : Text(
+                            isEdit ? 'Update Medication' : 'Save Medication',
+                            style: const TextStyle(
                                 fontWeight: FontWeight.bold,
                                 fontSize: 16,
-                                color: Colors.white)),
+                                color: Colors.white),
+                          ),
                   ),
                 ),
                 const SizedBox(height: 32),

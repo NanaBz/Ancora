@@ -1,7 +1,13 @@
+import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_storage/firebase_storage.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
+import '../services/notification_service.dart';
 import '../theme/app_theme.dart';
+import 'add_medication_page.dart';
 
 class HomePage extends StatelessWidget {
   const HomePage({Key? key, String firstName = ''}) : super(key: key);
@@ -22,148 +28,140 @@ class HomePage extends StatelessWidget {
             final firstName = ((profileData?['fullName'] as String?) ?? '').split(' ').first;
 
             return StreamBuilder<QuerySnapshot>(
-          stream: db.collection('users').doc(uid).collection('medications').snapshots(),
-          builder: (context, medSnap) {
-            return StreamBuilder<QuerySnapshot>(
-              stream: db.collection('users').doc(uid).collection('doseLogs').snapshots(),
-              builder: (context, logSnap) {
-                final meds = medSnap.data?.docs ?? [];
-                final logs = logSnap.data?.docs ?? [];
+              stream: db.collection('users').doc(uid).collection('medications').snapshots(),
+              builder: (context, medSnap) {
+                return StreamBuilder<QuerySnapshot>(
+                  stream: db.collection('users').doc(uid).collection('doseLogs').snapshots(),
+                  builder: (context, logSnap) {
+                    final meds = medSnap.data?.docs ?? [];
+                    final logs = logSnap.data?.docs ?? [];
 
-                final logStatuses = {
-                  for (final log in logs)
-                    log.id: (log.data() as Map<String, dynamic>)['status'] as String,
-                };
+                    final logStatuses = {
+                      for (final log in logs)
+                        log.id: (log.data() as Map<String, dynamic>)['status'] as String,
+                    };
 
-                final slots = _buildTodaySlots(meds, logStatuses);
-                final upcomingByDay = _buildUpcomingSlots(meds);
-                final taken = slots.where((s) => s.status == 'Completed').length;
-                final progress = slots.isEmpty ? 0.0 : taken / slots.length;
-                final progressPct = '${(progress * 100).round()}%';
+                    final slots = _buildTodaySlots(meds, logStatuses);
+                    final upcomingByDay = _buildUpcomingSlots(meds);
+                    final taken = slots.where((s) => s.status == 'Completed').length;
+                    final progress = slots.isEmpty ? 0.0 : taken / slots.length;
+                    final progressPct = '${(progress * 100).round()}%';
 
-                return SingleChildScrollView(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Center(
-                          child: Icon(Icons.favorite_border, size: 40, color: AppTheme.primaryColor),
-                        ),
-                        const SizedBox(height: 16),
-                        Text(
-                          'Hey $firstName,',
-                          style: TextStyle(color: AppTheme.primaryColor, fontSize: 22, fontWeight: FontWeight.w600),
-                        ),
-                        Text(
-                          _greeting(),
-                          style: TextStyle(color: AppTheme.primaryColor, fontSize: 20, fontWeight: FontWeight.w400),
-                        ),
-                        const SizedBox(height: 24),
-                        Card(
-                          color: AppTheme.featureCardColor,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
-                            side: BorderSide(color: AppTheme.primaryColor.withValues(alpha: 0.35), width: 1.5),
-                          ),
-                          child: Padding(
-                          padding: const EdgeInsets.all(16),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const Text("Today's Progress", style: TextStyle(fontSize: 16, color: Colors.black54)),
-                                  const SizedBox(height: 8),
-                                  Text(
-                                    progressPct,
-                                    style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                                  ),
-                                ],
+                    return SingleChildScrollView(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Center(
+                              child: Icon(Icons.favorite_border, size: 40, color: AppTheme.primaryColor),
+                            ),
+                            const SizedBox(height: 16),
+                            Text(
+                              'Hey $firstName,',
+                              style: TextStyle(color: AppTheme.primaryColor, fontSize: 22, fontWeight: FontWeight.w600),
+                            ),
+                            Text(
+                              _greeting(),
+                              style: TextStyle(color: AppTheme.primaryColor, fontSize: 20, fontWeight: FontWeight.w400),
+                            ),
+                            const SizedBox(height: 24),
+                            Card(
+                              color: AppTheme.featureCardColor,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(16),
+                                side: BorderSide(color: AppTheme.primaryColor.withValues(alpha: 0.35), width: 1.5),
                               ),
-                              Stack(
-                                alignment: Alignment.center,
-                                children: [
-                                  SizedBox(
-                                    width: 48,
-                                    height: 48,
-                                    child: CircularProgressIndicator(
-                                      value: progress,
-                                      strokeWidth: 4,
-                                      backgroundColor: AppTheme.featureCardColor,
-                                      valueColor: AlwaysStoppedAnimation<Color>(AppTheme.primaryColor),
+                              child: Padding(
+                                padding: const EdgeInsets.all(16),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        const Text("Today's Progress", style: TextStyle(fontSize: 16, color: Colors.black54)),
+                                        const SizedBox(height: 8),
+                                        Text(
+                                          progressPct,
+                                          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                                        ),
+                                      ],
                                     ),
-                                  ),
-                                  Text(progressPct, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11)),
-                                ],
-                              ),
-                            ],
-                          ),
-                          ),
-                        ),
-                        const SizedBox(height: 32),
-                        const Text(
-                          "Today's Schedule",
-                          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black87),
-                        ),
-                        const SizedBox(height: 16),
-                        if (slots.isEmpty)
-                          Center(
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(vertical: 32),
-                              child: Text(
-                                'No medications scheduled for today.\nTap + to add one.',
-                                textAlign: TextAlign.center,
-                                style: TextStyle(color: Colors.black45, fontSize: 15),
+                                    Stack(
+                                      alignment: Alignment.center,
+                                      children: [
+                                        SizedBox(
+                                          width: 48,
+                                          height: 48,
+                                          child: CircularProgressIndicator(
+                                            value: progress,
+                                            strokeWidth: 4,
+                                            backgroundColor: AppTheme.featureCardColor,
+                                            valueColor: AlwaysStoppedAnimation<Color>(AppTheme.primaryColor),
+                                          ),
+                                        ),
+                                        Text(progressPct, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11)),
+                                      ],
+                                    ),
+                                  ],
+                                ),
                               ),
                             ),
-                          )
-                        else
-                          ...slots.map((slot) => Padding(
-                                padding: const EdgeInsets.only(bottom: 12),
-                                child: _ScheduleCard(
-                                  slot: slot,
-                                  uid: uid,
-                                  db: db,
+                            const SizedBox(height: 32),
+                            const Text(
+                              "Today's Schedule",
+                              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black87),
+                            ),
+                            const SizedBox(height: 16),
+                            if (slots.isEmpty)
+                              Center(
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(vertical: 32),
+                                  child: Text(
+                                    'No medications scheduled for today.\nTap + to add one.',
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(color: Colors.black45, fontSize: 15),
+                                  ),
                                 ),
-                              )),
-                        const SizedBox(height: 32),
-                        ...upcomingByDay.entries.map((entry) {
-                          final dayLabel = _formatDayLabel(entry.key);
-                          return Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                dayLabel,
-                                style: const TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.black87,
-                                ),
-                              ),
-                              const SizedBox(height: 12),
-                              ...entry.value.map((slot) => Padding(
+                              )
+                            else
+                              ...slots.map((slot) => Padding(
                                     padding: const EdgeInsets.only(bottom: 12),
-                                    child: _ScheduleCard(
-                                      slot: slot,
-                                      uid: uid,
-                                      db: db,
-                                    ),
+                                    child: _ScheduleCard(slot: slot, uid: uid, db: db),
                                   )),
-                              const SizedBox(height: 20),
-                            ],
-                          );
-                        }),
-                        const SizedBox(height: 16),
-                      ],
-                    ),
-                  ),
+                            const SizedBox(height: 32),
+                            ...upcomingByDay.entries.map((entry) {
+                              final dayLabel = _formatDayLabel(entry.key);
+                              return Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    dayLabel,
+                                    style: const TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.black87,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 12),
+                                  ...entry.value.map((slot) => Padding(
+                                        padding: const EdgeInsets.only(bottom: 12),
+                                        child: _ScheduleCard(slot: slot, uid: uid, db: db),
+                                      )),
+                                  const SizedBox(height: 20),
+                                ],
+                              );
+                            }),
+                            const SizedBox(height: 16),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
                 );
               },
             );
-          },
-        );
           },
         ),
       ),
@@ -174,16 +172,11 @@ class HomePage extends StatelessWidget {
     final now = DateTime.now();
     final tomorrow = DateTime(now.year, now.month, now.day + 1);
     if (day == tomorrow) return 'Tomorrow';
-    const months = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
-    ];
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     return '${months[day.month - 1]} ${day.day}';
   }
 
-  Map<DateTime, List<_MedSlot>> _buildUpcomingSlots(
-    List<QueryDocumentSnapshot> meds,
-  ) {
+  Map<DateTime, List<_MedSlot>> _buildUpcomingSlots(List<QueryDocumentSnapshot> meds) {
     final now = DateTime.now();
     final result = <DateTime, List<_MedSlot>>{};
 
@@ -193,16 +186,15 @@ class HomePage extends StatelessWidget {
 
       for (final med in meds) {
         final data = med.data() as Map<String, dynamic>;
+        if (data['archived'] == true) continue;
+
         final startTs = data['startDate'] as Timestamp?;
         final endTs = data['endDate'] as Timestamp?;
         if (startTs == null || endTs == null) continue;
 
-        final startDay = DateTime(
-          startTs.toDate().year, startTs.toDate().month, startTs.toDate().day,
-        );
-        final endDay = DateTime(
-          endTs.toDate().year, endTs.toDate().month, endTs.toDate().day,
-        ).add(const Duration(days: 1));
+        final startDay = DateTime(startTs.toDate().year, startTs.toDate().month, startTs.toDate().day);
+        final endDay = DateTime(endTs.toDate().year, endTs.toDate().month, endTs.toDate().day)
+            .add(const Duration(days: 1));
 
         if (dayStart.isBefore(startDay) || dayStart.isAfter(endDay)) continue;
 
@@ -214,10 +206,8 @@ class HomePage extends StatelessWidget {
           final minute = int.tryParse(parts[1]) ?? 0;
           final scheduledAt = DateTime(dayStart.year, dayStart.month, dayStart.day, hour, minute);
 
-          final dateStr =
-              '${dayStart.year}${dayStart.month.toString().padLeft(2, '0')}${dayStart.day.toString().padLeft(2, '0')}';
-          final timeStr =
-              '${hour.toString().padLeft(2, '0')}${minute.toString().padLeft(2, '0')}';
+          final dateStr = '${dayStart.year}${dayStart.month.toString().padLeft(2, '0')}${dayStart.day.toString().padLeft(2, '0')}';
+          final timeStr = '${hour.toString().padLeft(2, '0')}${minute.toString().padLeft(2, '0')}';
           final logId = '${med.id}_${dateStr}_$timeStr';
 
           result.putIfAbsent(dayStart, () => []);
@@ -229,6 +219,7 @@ class HomePage extends StatelessWidget {
             count: '1 ${data['medType'] ?? ''}',
             scheduledAt: scheduledAt,
             status: 'Upcoming',
+            medData: data,
           ));
         }
       }
@@ -254,21 +245,19 @@ class HomePage extends StatelessWidget {
   ) {
     final now = DateTime.now();
     final todayStart = DateTime(now.year, now.month, now.day);
-    final todayEnd = todayStart.add(const Duration(days: 1));
     final slots = <_MedSlot>[];
 
     for (final med in meds) {
       final data = med.data() as Map<String, dynamic>;
+      if (data['archived'] == true) continue;
+
       final startTs = data['startDate'] as Timestamp?;
       final endTs = data['endDate'] as Timestamp?;
       if (startTs == null || endTs == null) continue;
 
-      final startDay = DateTime(
-        startTs.toDate().year, startTs.toDate().month, startTs.toDate().day,
-      );
-      final endDay = DateTime(
-        endTs.toDate().year, endTs.toDate().month, endTs.toDate().day,
-      ).add(const Duration(days: 1));
+      final startDay = DateTime(startTs.toDate().year, startTs.toDate().month, startTs.toDate().day);
+      final endDay = DateTime(endTs.toDate().year, endTs.toDate().month, endTs.toDate().day)
+          .add(const Duration(days: 1));
 
       if (todayStart.isBefore(startDay) || todayStart.isAfter(endDay)) continue;
 
@@ -280,10 +269,8 @@ class HomePage extends StatelessWidget {
         final minute = int.tryParse(parts[1]) ?? 0;
         final scheduledAt = DateTime(now.year, now.month, now.day, hour, minute);
 
-        final dateStr =
-            '${now.year}${now.month.toString().padLeft(2, '0')}${now.day.toString().padLeft(2, '0')}';
-        final timeStr =
-            '${hour.toString().padLeft(2, '0')}${minute.toString().padLeft(2, '0')}';
+        final dateStr = '${now.year}${now.month.toString().padLeft(2, '0')}${now.day.toString().padLeft(2, '0')}';
+        final timeStr = '${hour.toString().padLeft(2, '0')}${minute.toString().padLeft(2, '0')}';
         final logId = '${med.id}_${dateStr}_$timeStr';
 
         final logStatus = logStatuses[logId];
@@ -308,6 +295,7 @@ class HomePage extends StatelessWidget {
           count: '1 ${data['medType'] ?? ''}',
           scheduledAt: scheduledAt,
           status: status,
+          medData: data,
         ));
       }
     }
@@ -325,6 +313,7 @@ class _MedSlot {
   final String count;
   final DateTime scheduledAt;
   final String status;
+  final Map<String, dynamic> medData;
 
   const _MedSlot({
     required this.medId,
@@ -334,18 +323,41 @@ class _MedSlot {
     required this.count,
     required this.scheduledAt,
     required this.status,
+    required this.medData,
   });
 }
 
-class _ScheduleCard extends StatelessWidget {
+class _ScheduleCard extends StatefulWidget {
   final _MedSlot slot;
   final String uid;
   final FirebaseFirestore db;
 
   const _ScheduleCard({required this.slot, required this.uid, required this.db});
 
+  @override
+  State<_ScheduleCard> createState() => _ScheduleCardState();
+}
+
+class _ScheduleCardState extends State<_ScheduleCard> {
+  bool _uploading = false;
+  late final Timer _refreshTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    _refreshTimer = Timer.periodic(const Duration(minutes: 1), (_) {
+      if (mounted) setState(() {});
+    });
+  }
+
+  @override
+  void dispose() {
+    _refreshTimer.cancel();
+    super.dispose();
+  }
+
   Color get _statusColor {
-    switch (slot.status) {
+    switch (widget.slot.status) {
       case 'Completed': return Colors.green;
       case 'Soon':      return Colors.amber;
       case 'Overdue':
@@ -354,11 +366,19 @@ class _ScheduleCard extends StatelessWidget {
     }
   }
 
+  bool get _isTakeEnabled {
+    final status = widget.slot.status;
+    if (status == 'Upcoming') return true;
+    if (status == 'Completed' || status == 'Missed') return false;
+    final diff = DateTime.now().difference(widget.slot.scheduledAt).inMinutes.abs();
+    return diff <= 30;
+  }
+
   Future<void> _markTaken(BuildContext context) async {
-    final isEarly = slot.status == 'Upcoming';
+    final isEarly = widget.slot.status == 'Upcoming';
 
     if (isEarly) {
-      final timeStr = TimeOfDay.fromDateTime(slot.scheduledAt).format(context);
+      final timeStr = TimeOfDay.fromDateTime(widget.slot.scheduledAt).format(context);
       final confirmed = await showDialog<bool>(
         context: context,
         builder: (ctx) => AlertDialog(
@@ -382,18 +402,48 @@ class _ScheduleCard extends StatelessWidget {
       if (confirmed != true) return;
     }
 
+    String? proofUrl;
+    if (!kIsWeb) {
+      final photo = await ImagePicker().pickImage(
+        source: ImageSource.camera,
+        maxWidth: 1080,
+        maxHeight: 1080,
+        imageQuality: 75,
+      );
+      if (photo == null) return;
+
+      if (mounted) setState(() => _uploading = true);
+      try {
+        final ref = FirebaseStorage.instance
+            .ref('proofImages/${widget.uid}/${widget.slot.logId}.jpg');
+        await ref.putData(
+          await photo.readAsBytes(),
+          SettableMetadata(contentType: 'image/jpeg'),
+        );
+        proofUrl = await ref.getDownloadURL();
+      } catch (e) {
+        if (mounted) setState(() => _uploading = false);
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Photo upload failed: $e')),
+          );
+        }
+        return;
+      }
+    }
+
     try {
-      await db
+      await widget.db
           .collection('users')
-          .doc(uid)
+          .doc(widget.uid)
           .collection('doseLogs')
-          .doc(slot.logId)
+          .doc(widget.slot.logId)
           .set({
-        'medId': slot.medId,
-        'scheduledAt': Timestamp.fromDate(slot.scheduledAt),
+        'medId': widget.slot.medId,
+        'scheduledAt': Timestamp.fromDate(widget.slot.scheduledAt),
         'status': 'taken',
         'takenAt': FieldValue.serverTimestamp(),
-        'proofPath': null,
+        'proofPath': proofUrl,
         if (isEarly) 'earlyTake': true,
       });
     } catch (e) {
@@ -402,12 +452,72 @@ class _ScheduleCard extends StatelessWidget {
           SnackBar(content: Text('Error: $e')),
         );
       }
+    } finally {
+      if (mounted) setState(() => _uploading = false);
+    }
+  }
+
+  Future<void> _handleMenuAction(String value, BuildContext context) async {
+    if (value == 'edit') {
+      await Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => AddMedicationPage(
+            editMedId: widget.slot.medId,
+            editMedData: widget.slot.medData,
+          ),
+        ),
+      );
+    } else if (value == 'stop') {
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Stop Taking?'),
+          content: Text(
+            'Stop taking ${widget.slot.name}? It will be removed from your schedule.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Stop Taking', style: TextStyle(color: Colors.white)),
+            ),
+          ],
+        ),
+      );
+      if (confirmed != true) return;
+
+      try {
+        await widget.db
+            .collection('users')
+            .doc(widget.uid)
+            .collection('medications')
+            .doc(widget.slot.medId)
+            .update({'archived': true});
+        await NotificationService.cancelMedication(widget.slot.medId);
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('${widget.slot.name} has been stopped.')),
+          );
+        }
+      } catch (e) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Error: $e')),
+          );
+        }
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final showTake = slot.status == 'Upcoming' || slot.status == 'Soon' || slot.status == 'Overdue';
+    final showTake = widget.slot.status == 'Upcoming' ||
+        widget.slot.status == 'Soon' ||
+        widget.slot.status == 'Overdue';
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -422,17 +532,32 @@ class _ScheduleCard extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(slot.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                decoration: BoxDecoration(
-                  color: _statusColor.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text(
-                  slot.status,
-                  style: TextStyle(color: _statusColor, fontWeight: FontWeight.bold),
-                ),
+              Expanded(
+                child: Text(widget.slot.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+              ),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: _statusColor.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      widget.slot.status,
+                      style: TextStyle(color: _statusColor, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                  PopupMenuButton<String>(
+                    icon: const Icon(Icons.more_vert, size: 20, color: Colors.black45),
+                    onSelected: (v) => _handleMenuAction(v, context),
+                    itemBuilder: (_) => const [
+                      PopupMenuItem(value: 'edit', child: Text('Edit')),
+                      PopupMenuItem(value: 'stop', child: Text('Stop Taking')),
+                    ],
+                  ),
+                ],
               ),
             ],
           ),
@@ -442,7 +567,7 @@ class _ScheduleCard extends StatelessWidget {
               const Icon(Icons.access_time, size: 14, color: Colors.black45),
               const SizedBox(width: 4),
               Text(
-                TimeOfDay.fromDateTime(slot.scheduledAt).format(context),
+                TimeOfDay.fromDateTime(widget.slot.scheduledAt).format(context),
                 style: const TextStyle(color: Colors.black54, fontSize: 13),
               ),
             ],
@@ -451,25 +576,43 @@ class _ScheduleCard extends StatelessWidget {
           Row(
             children: [
               const Text('Dosage  -  ', style: TextStyle(color: Colors.black54)),
-              Text(slot.dosage, style: const TextStyle(fontWeight: FontWeight.bold)),
+              Text(widget.slot.dosage, style: const TextStyle(fontWeight: FontWeight.bold)),
               const SizedBox(width: 16),
-              Text(slot.count, style: const TextStyle(fontWeight: FontWeight.bold)),
+              Text(widget.slot.count, style: const TextStyle(fontWeight: FontWeight.bold)),
               const Spacer(),
               if (showTake)
-                GestureDetector(
-                  onTap: () => _markTaken(context),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: Colors.green,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: const Text(
-                      'Take',
-                      style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-                    ),
-                  ),
-                ),
+                _uploading
+                    ? const SizedBox(
+                        width: 24,
+                        height: 24,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : _isTakeEnabled
+                        ? GestureDetector(
+                            onTap: () => _markTaken(context),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                              decoration: BoxDecoration(
+                                color: Colors.green,
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: const Text(
+                                'Take',
+                                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                          )
+                        : Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: Colors.grey[300],
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Text(
+                              'Take',
+                              style: TextStyle(color: Colors.grey[600], fontWeight: FontWeight.bold),
+                            ),
+                          ),
             ],
           ),
         ],

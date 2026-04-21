@@ -98,6 +98,11 @@ class _HistoryPageState extends State<HistoryPage> {
                       onMonthChanged: (m) => setState(() => _viewMonth = m),
                     ),
                     const SizedBox(height: 32),
+                    const Text('Dose Log',
+                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 10),
+                    _DoseLogList(logs: logs),
+                    const SizedBox(height: 32),
                   ],
                 ),
               ),
@@ -329,6 +334,81 @@ class _DayCell extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _DoseLogList extends StatelessWidget {
+  final List<QueryDocumentSnapshot> logs;
+  const _DoseLogList({required this.logs});
+
+  @override
+  Widget build(BuildContext context) {
+    final sorted = [...logs]..sort((a, b) {
+        final aTs = (a.data() as Map<String, dynamic>)['scheduledAt'] as Timestamp?;
+        final bTs = (b.data() as Map<String, dynamic>)['scheduledAt'] as Timestamp?;
+        if (aTs == null && bTs == null) return 0;
+        if (aTs == null) return 1;
+        if (bTs == null) return -1;
+        return bTs.compareTo(aTs);
+      });
+
+    if (sorted.isEmpty) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: 16),
+        child: Center(
+          child: Text('No dose logs yet.', style: TextStyle(color: Colors.black45)),
+        ),
+      );
+    }
+
+    return Column(
+      children: sorted.map((doc) {
+        final data = doc.data() as Map<String, dynamic>;
+        final ts = data['scheduledAt'] as Timestamp?;
+        final status = (data['status'] as String?) ?? '';
+        final proofPath = data['proofPath'] as String?;
+        final dt = ts?.toDate();
+        final label = dt == null
+            ? '—'
+            : '${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')}/${dt.year}  '
+              '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(label, style: const TextStyle(fontSize: 13, color: Colors.black54)),
+                    const SizedBox(height: 2),
+                    Text(
+                      status == 'taken' ? 'Taken' : 'Missed',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: status == 'taken' ? Colors.green : Colors.redAccent,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (proofPath != null && proofPath.isNotEmpty)
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: Image.network(
+                    proofPath,
+                    width: 56,
+                    height: 56,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => const SizedBox(width: 56, height: 56),
+                  ),
+                ),
+            ],
+          ),
+        );
+      }).toList(),
     );
   }
 }
