@@ -1,0 +1,61 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn()   { return request.auth != null; }
+    function me()         { return request.auth.uid; }
+    function isOwner(uid) { return signedIn() && me() == uid; }
+    function isCaregiverOf(patientUid) {
+      return exists(/databases/$(database)/documents/users/$(patientUid)/caregivers/$(me()));
+    }
+
+    match /users/{uid} {
+      allow read:   if signedIn();
+      allow create: if isOwner(uid)
+                    && request.resource.data.role in ['patient', 'caregiver'];
+      allow update: if isOwner(uid)
+                    && request.resource.data.role == resource.data.role
+                    && request.resource.data.displayId == resource.data.displayId;
+      allow delete: if false;
+
+      match /medications/{medId} {
+        allow read:  if isOwner(uid) || isCaregiverOf(uid);
+        allow write: if isOwner(uid);
+      }
+
+      match /doseLogs/{logId} {
+        allow read:   if isOwner(uid) || isCaregiverOf(uid);
+        allow create: if isOwner(uid)
+                      && request.resource.data.status in ['taken', 'missed'];
+        allow update: if isOwner(uid)
+                      && request.resource.data.status == resource.data.status;
+        allow delete: if false;
+      }
+
+      match /caregivers/{caregiverUid} {
+        allow read:   if isOwner(uid) || me() == caregiverUid;
+        allow create: if signedIn() && (me() == caregiverUid || isOwner(uid));
+        allow delete: if signedIn() && (me() == caregiverUid || isOwner(uid));
+        allow update: if false;
+      }
+
+      match /patients/{patientUid} {
+        allow read:   if isOwner(uid);
+        allow create: if isOwner(uid);
+        allow delete: if isOwner(uid) || me() == patientUid;
+        allow update: if false;
+      }
+
+      match /fcmTokens/{tokenId} {
+        allow read, write: if isOwner(uid);
+      }
+    }
+
+    match /displayIdIndex/{displayId} {
+      allow get:    if signedIn();
+      allow list:   if false;
+      allow create: if signedIn() && request.resource.data.uid == me();
+      allow update, delete: if false;
+    }
+  }
+}

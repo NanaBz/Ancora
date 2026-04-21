@@ -1,4 +1,9 @@
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'firebase_options.dart';
+import 'services/notification_service.dart';
 import 'screens/landing_page.dart';
 import 'screens/signup_page.dart';
 import 'screens/login_page.dart';
@@ -14,7 +19,10 @@ import 'screens/caregiver_more_page.dart';
 import 'screens/caregiver_login_page.dart';
 import 'screens/caregiver_signup_page.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  await NotificationService.init();
   runApp(const AncoraApp());
 }
 
@@ -31,12 +39,11 @@ class AncoraApp extends StatelessWidget {
         primaryColor: const Color(0xFF2CB9B0),
         scaffoldBackgroundColor: Colors.white,
       ),
-      initialRoute: '/',
+      home: const AuthWrapper(),
       routes: {
-        '/': (context) => const LandingPage(),
         '/signup': (context) => const SignUpPage(),
         '/login': (context) => const LoginPage(),
-        '/home': (context) => const HomePage(firstName: 'John'),
+        '/home': (context) => const HomePage(),
         '/history': (context) => const HistoryPage(),
         '/add': (context) => const AddMedicationPage(),
         '/more': (context) => const MorePage(),
@@ -47,6 +54,46 @@ class AncoraApp extends StatelessWidget {
         '/caregiver-more': (context) => CaregiverMorePage(),
         '/caregiver-login': (context) => CaregiverLoginPage(),
         '/caregiver-signup': (context) => CaregiverSignUpPage(),
+      },
+    );
+  }
+}
+
+class AuthWrapper extends StatelessWidget {
+  const AuthWrapper({Key? key}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<User?>(
+      stream: FirebaseAuth.instance.authStateChanges(),
+      builder: (context, authSnap) {
+        if (authSnap.connectionState == ConnectionState.waiting) {
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+          );
+        }
+
+        final user = authSnap.data;
+        if (user == null) return const LandingPage();
+
+        return FutureBuilder<DocumentSnapshot>(
+          future: FirebaseFirestore.instance
+              .collection('users')
+              .doc(user.uid)
+              .get(),
+          builder: (context, userSnap) {
+            if (!userSnap.hasData) {
+              return const Scaffold(
+                body: Center(child: CircularProgressIndicator()),
+              );
+            }
+            final data = userSnap.data?.data() as Map<String, dynamic>?;
+            final role = data?['role'] as String?;
+
+            if (role == 'caregiver') return const CaregiverHomePage();
+            return const HomePage();
+          },
+        );
       },
     );
   }

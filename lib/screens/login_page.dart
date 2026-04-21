@@ -1,8 +1,50 @@
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
+import '../services/auth_service.dart';
 
-class LoginPage extends StatelessWidget {
+class LoginPage extends StatefulWidget {
   const LoginPage({Key? key}) : super(key: key);
+
+  @override
+  State<LoginPage> createState() => _LoginPageState();
+}
+
+class _LoginPageState extends State<LoginPage> {
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
+  bool _loading = false;
+  String? _error;
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _login() async {
+    final email = _emailController.text.trim();
+    final password = _passwordController.text;
+
+    if (email.isEmpty || password.isEmpty) {
+      setState(() => _error = 'Please enter your email and password.');
+      return;
+    }
+
+    setState(() { _loading = true; _error = null; });
+    try {
+      await AuthService().signIn(
+        email: email,
+        password: password,
+        expectedRole: 'patient',
+      );
+      if (mounted) Navigator.of(context).pushReplacementNamed('/home');
+    } catch (e) {
+      setState(() => _error = e.toString().replaceFirst('Exception: ', ''));
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -31,7 +73,7 @@ class LoginPage extends StatelessWidget {
                       onPressed: () => Navigator.of(context).pop(),
                     ),
                   ),
-                  Positioned(
+                  const Positioned(
                     top: 40,
                     left: 0,
                     right: 0,
@@ -58,14 +100,30 @@ class LoginPage extends StatelessWidget {
                       textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: 24),
-                    _CustomTextField(label: 'Email', hint: 'johndoe@gmail.com', keyboardType: TextInputType.emailAddress),
+                    _CustomTextField(
+                      label: 'Email',
+                      hint: 'johndoe@gmail.com',
+                      controller: _emailController,
+                      keyboardType: TextInputType.emailAddress,
+                    ),
                     const SizedBox(height: 16),
-                    _CustomTextField(label: 'Password', hint: '********', obscureText: true),
+                    _CustomTextField(
+                      label: 'Password',
+                      hint: '********',
+                      controller: _passwordController,
+                      obscureText: true,
+                    ),
+                    if (_error != null) ...[
+                      const SizedBox(height: 12),
+                      Text(
+                        _error!,
+                        style: const TextStyle(color: Colors.red),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
                     const SizedBox(height: 28),
                     ElevatedButton(
-                      onPressed: () {
-                        Navigator.of(context).pushReplacementNamed('/home');
-                      },
+                      onPressed: _loading ? null : _login,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppTheme.primaryColor,
                         minimumSize: const Size.fromHeight(48),
@@ -73,10 +131,12 @@ class LoginPage extends StatelessWidget {
                           borderRadius: BorderRadius.circular(24),
                         ),
                       ),
-                      child: const Text(
-                        'Sign In',
-                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                      ),
+                      child: _loading
+                          ? const CircularProgressIndicator(color: Colors.white)
+                          : const Text(
+                              'Sign In',
+                              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                            ),
                     ),
                     const SizedBox(height: 16),
                     Row(
@@ -84,9 +144,7 @@ class LoginPage extends StatelessWidget {
                       children: [
                         const Text("Don't have an account? "),
                         GestureDetector(
-                          onTap: () {
-                            Navigator.of(context).pushReplacementNamed('/signup');
-                          },
+                          onTap: () => Navigator.of(context).pushReplacementNamed('/signup'),
                           child: Text(
                             'Sign up',
                             style: TextStyle(
@@ -98,7 +156,6 @@ class LoginPage extends StatelessWidget {
                         ),
                       ],
                     ),
-
                     const SizedBox(height: 24),
                   ],
                 ),
@@ -111,17 +168,17 @@ class LoginPage extends StatelessWidget {
   }
 }
 
-
-
 class _CustomTextField extends StatelessWidget {
   final String label;
   final String hint;
+  final TextEditingController controller;
   final bool obscureText;
   final TextInputType? keyboardType;
 
   const _CustomTextField({
     required this.label,
     required this.hint,
+    required this.controller,
     this.obscureText = false,
     this.keyboardType,
   });
@@ -131,21 +188,16 @@ class _CustomTextField extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          label,
-          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-        ),
+        Text(label, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
         const SizedBox(height: 6),
         TextField(
+          controller: controller,
           obscureText: obscureText,
           keyboardType: keyboardType,
           decoration: InputDecoration(
             hintText: hint,
             contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: Colors.black12),
-            ),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
               borderSide: const BorderSide(color: Colors.black26),

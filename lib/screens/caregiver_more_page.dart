@@ -1,202 +1,283 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
+import '../services/auth_service.dart';
 
-class CaregiverMorePage extends StatefulWidget {
+class CaregiverMorePage extends StatelessWidget {
   const CaregiverMorePage({Key? key}) : super(key: key);
 
   @override
-  State<CaregiverMorePage> createState() => _CaregiverMorePageState();
-}
-
-class _CaregiverMorePageState extends State<CaregiverMorePage> {
-  bool missedDoseNotifications = true;
-  bool emergencyAlerts = true;
-  final _nameController = TextEditingController(text: 'Dr. Sarah Sasuke');
-  final _ageController = TextEditingController(text: '32 years old');
-  final _emailController = TextEditingController(text: 'sarahSasuke@gmail.com');
-
-  @override
-  void dispose() {
-    _nameController.dispose();
-    _ageController.dispose();
-    _emailController.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
+    final uid = FirebaseAuth.instance.currentUser!.uid;
+
     return Scaffold(
       backgroundColor: Colors.white,
       bottomNavigationBar: _CaregiverBottomNavBar(selectedIndex: 3),
       body: SafeArea(
-        child: SingleChildScrollView(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
+        child: StreamBuilder<DocumentSnapshot>(
+          stream: FirebaseFirestore.instance.collection('users').doc(uid).snapshots(),
+          builder: (context, snap) {
+            final data = snap.data?.data() as Map<String, dynamic>?;
+
+            return SingleChildScrollView(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0),
+                child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Expanded(
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Profile',
+                                style: TextStyle(
+                                  color: AppTheme.primaryColor,
+                                  fontSize: 22,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              Text(
+                                '& Settings',
+                                style: TextStyle(
+                                  color: AppTheme.primaryColor,
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.w400,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Icon(Icons.favorite_border, size: 28, color: AppTheme.primaryColor),
+                      ],
+                    ),
+                    const SizedBox(height: 24),
+                    const Text('Personal Details', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                    const SizedBox(height: 10),
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        border: Border.all(color: AppTheme.primaryColor.withOpacity(0.4)),
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: _EditableProfileCard(uid: uid, data: data),
+                    ),
+                    const SizedBox(height: 24),
+                    const Text('Others', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                    const SizedBox(height: 10),
+                    Container(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.black12),
+                      ),
                       child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            'Profile & Settings',
-                            style: TextStyle(
-                              color: AppTheme.primaryColor,
-                              fontSize: 22,
-                              fontWeight: FontWeight.bold,
-                            ),
+                          ListTile(
+                            leading: Icon(Icons.verified, color: AppTheme.primaryColor),
+                            title: const Text('Agreement Policy'),
+                            trailing: const Icon(Icons.chevron_right),
+                            onTap: () {},
+                          ),
+                          const Divider(height: 0),
+                          ListTile(
+                            leading: Icon(Icons.help_outline, color: AppTheme.primaryColor),
+                            title: const Text('Help & Feedback'),
+                            trailing: const Icon(Icons.chevron_right),
+                            onTap: () {},
                           ),
                         ],
                       ),
                     ),
-                    SizedBox(width: 8),
-                    Icon(Icons.favorite_border, size: 28, color: AppTheme.primaryColor),
+                    const SizedBox(height: 24),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: () async {
+                          await AuthService().signOut();
+                          if (context.mounted) {
+                            Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false);
+                          }
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.redAccent,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                        ),
+                        child: const Text('Sign Out', style: TextStyle(fontWeight: FontWeight.bold)),
+                      ),
+                    ),
                   ],
                 ),
-                const SizedBox(height: 24),
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    border: Border.all(color: Colors.black12),
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Icon(Icons.verified_user, color: AppTheme.primaryColor),
-                          const SizedBox(width: 8),
-                          const Text('Caregiver Profile', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                      _EditableProfileField(
-                        label: 'Name',
-                        controller: _nameController,
-                      ),
-                      _EditableProfileField(
-                        label: 'Age',
-                        controller: _ageController,
-                      ),
-                      _EditableProfileField(
-                        label: 'Email',
-                        controller: _emailController,
-                        keyboardType: TextInputType.emailAddress,
-                      ),
-                      const SizedBox(height: 16),
-                      SizedBox(
-                        width: double.infinity,
-                        child: ElevatedButton(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppTheme.primaryColor,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(24),
-                            ),
-                            padding: const EdgeInsets.symmetric(vertical: 14),
-                          ),
-                          onPressed: () {
-                            setState(() {}); // In a real app, save changes to backend
-                          },
-                          child: const Text('Save Changes', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.white)),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 24),
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    border: Border.all(color: Colors.black12),
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Icon(Icons.alarm, color: Colors.redAccent),
-                          const SizedBox(width: 8),
-                          const Text('Alert Settings', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                      SwitchListTile(
-                        value: missedDoseNotifications,
-                        onChanged: (val) => setState(() => missedDoseNotifications = val),
-                        activeColor: AppTheme.primaryColor,
-                        title: const Text('Missed Dose Notifications', style: TextStyle(fontWeight: FontWeight.bold)),
-                        subtitle: const Text('Receive a notification when a user misses a scheduled dose'),
-                        contentPadding: EdgeInsets.zero,
-                      ),
-                      SwitchListTile(
-                        value: emergencyAlerts,
-                        onChanged: (val) => setState(() => emergencyAlerts = val),
-                        activeColor: AppTheme.primaryColor,
-                        title: const Text('Emergency Alerts', style: TextStyle(fontWeight: FontWeight.bold)),
-                        subtitle: const Text('Receive urgent alerts for consecutive missed doses'),
-                        contentPadding: EdgeInsets.zero,
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 24),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.redAccent,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(24),
-                      ),
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                    ),
-                    onPressed: () {
-                      Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false);
-                    },
-                    child: const Text('Sign Out', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.white)),
-                  ),
-                ),
-              ],
-            ),
-          ),
+              ),
+            );
+          },
         ),
       ),
     );
   }
 }
 
+class _EditableProfileCard extends StatefulWidget {
+  final String uid;
+  final Map<String, dynamic>? data;
+
+  const _EditableProfileCard({required this.uid, required this.data});
+
+  @override
+  State<_EditableProfileCard> createState() => _EditableProfileCardState();
+}
+
+class _EditableProfileCardState extends State<_EditableProfileCard> {
+  late final TextEditingController nameController;
+  late final TextEditingController ageController;
+  late final TextEditingController emailController;
+  late final TextEditingController phoneController;
+  bool _saving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    final d = widget.data;
+    nameController  = TextEditingController(text: d?['fullName'] as String? ?? '');
+    ageController   = TextEditingController(text: d?['age']?.toString() ?? '');
+    emailController = TextEditingController(text: d?['email'] as String? ?? '');
+    phoneController = TextEditingController(text: d?['phone'] as String? ?? '');
+  }
+
+  @override
+  void didUpdateWidget(_EditableProfileCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.data != widget.data && widget.data != null) {
+      final d = widget.data!;
+      nameController.text  = d['fullName'] as String? ?? nameController.text;
+      ageController.text   = d['age']?.toString() ?? ageController.text;
+      emailController.text = d['email'] as String? ?? emailController.text;
+      phoneController.text = d['phone'] as String? ?? phoneController.text;
+    }
+  }
+
+  @override
+  void dispose() {
+    nameController.dispose();
+    ageController.dispose();
+    emailController.dispose();
+    phoneController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _save() async {
+    setState(() => _saving = true);
+    try {
+      await FirebaseFirestore.instance.collection('users').doc(widget.uid).update({
+        'fullName': nameController.text.trim(),
+        'age':      ageController.text.trim(),
+        'phone':    phoneController.text.trim(),
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Profile updated.')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Row(
+          children: [
+            Stack(
+              children: [
+                CircleAvatar(
+                  radius: 32,
+                  backgroundColor: Colors.grey[200],
+                  child: const Icon(Icons.person, size: 40, color: Colors.black38),
+                ),
+                Positioned(
+                  bottom: 0,
+                  right: 0,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: AppTheme.primaryColor,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white, width: 2),
+                    ),
+                    child: const Icon(Icons.add, size: 18, color: Colors.white),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _EditableProfileField(label: 'Name',  controller: nameController),
+                  _EditableProfileField(label: 'Age',   controller: ageController),
+                  _EditableProfileField(label: 'Email', controller: emailController, readOnly: true),
+                  _EditableProfileField(label: 'Phone', controller: phoneController),
+                ],
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        SizedBox(
+          width: double.infinity,
+          child: ElevatedButton(
+            onPressed: _saving ? null : _save,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.primaryColor,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            ),
+            child: _saving
+                ? const CircularProgressIndicator(color: Colors.white)
+                : const Text('Save Changes', style: TextStyle(fontWeight: FontWeight.bold)),
+          ),
+        ),
+      ],
+    );
+  }
+}
 
 class _EditableProfileField extends StatelessWidget {
   final String label;
   final TextEditingController controller;
-  final TextInputType? keyboardType;
-  const _EditableProfileField({required this.label, required this.controller, this.keyboardType});
+  final bool readOnly;
+  const _EditableProfileField({required this.label, required this.controller, this.readOnly = false});
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4.0),
+      padding: const EdgeInsets.symmetric(vertical: 2.0),
       child: Row(
         children: [
-          SizedBox(width: 60, child: Text('$label :', style: const TextStyle(fontWeight: FontWeight.bold))),
-          const SizedBox(width: 8),
+          Text('$label : ', style: const TextStyle(fontWeight: FontWeight.bold)),
           Expanded(
             child: TextField(
               controller: controller,
-              keyboardType: keyboardType,
-              style: const TextStyle(color: Colors.black87),
+              readOnly: readOnly,
+              style: TextStyle(
+                fontWeight: FontWeight.w500,
+                color: readOnly ? Colors.black45 : Colors.black87,
+              ),
               decoration: const InputDecoration(
                 isDense: true,
+                contentPadding: EdgeInsets.symmetric(vertical: 2, horizontal: 4),
                 border: InputBorder.none,
-                contentPadding: EdgeInsets.symmetric(vertical: 6),
               ),
             ),
           ),
@@ -226,27 +307,19 @@ class _CaregiverBottomNavBar extends StatelessWidget {
             icon: Icons.home,
             label: selectedIndex == 0 ? 'Home' : '',
             selected: selectedIndex == 0,
-            onTap: () {
-              Navigator.of(context).pushReplacementNamed('/caregiver-home');
-            },
+            onTap: () => Navigator.of(context).pushReplacementNamed('/caregiver-home'),
           ),
           _CaregiverNavBarItem(
             icon: Icons.groups,
             label: selectedIndex == 1 ? 'Clients' : '',
             selected: selectedIndex == 1,
-            onTap: () {
-              Navigator.of(context).pushReplacementNamed('/caregiver-clients');
-            },
+            onTap: () => Navigator.of(context).pushReplacementNamed('/caregiver-clients'),
           ),
           _CaregiverNavBarItem(
             icon: Icons.person_add,
             label: selectedIndex == 2 ? 'Add User' : '',
             selected: selectedIndex == 2,
-            onTap: () {
-              if (selectedIndex != 2) {
-                Navigator.of(context).pushReplacementNamed('/caregiver-add-user');
-              }
-            },
+            onTap: () => Navigator.of(context).pushReplacementNamed('/caregiver-add-user'),
           ),
           _CaregiverNavBarItem(
             icon: Icons.menu,

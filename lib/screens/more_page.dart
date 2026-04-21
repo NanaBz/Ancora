@@ -1,135 +1,195 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
+import '../services/auth_service.dart';
 
 class MorePage extends StatelessWidget {
   const MorePage({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
+    final uid = FirebaseAuth.instance.currentUser!.uid;
+
     return Scaffold(
       backgroundColor: Colors.white,
       bottomNavigationBar: _BottomNavBar(selectedIndex: 3),
       body: SafeArea(
-        child: SingleChildScrollView(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        child: StreamBuilder<DocumentSnapshot>(
+          stream: FirebaseFirestore.instance.collection('users').doc(uid).snapshots(),
+          builder: (context, snap) {
+            final data = snap.data?.data() as Map<String, dynamic>?;
+            final displayId = (data?['displayId'] as String?) ?? '----';
+
+            return SingleChildScrollView(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text(
-                          'Profile',
-                          style: TextStyle(
-                            color: AppTheme.primaryColor,
-                            fontSize: 24,
-                            fontWeight: FontWeight.bold,
-                          ),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('Profile', style: TextStyle(color: AppTheme.primaryColor, fontSize: 24, fontWeight: FontWeight.bold)),
+                            Text('& Settings', style: TextStyle(color: AppTheme.primaryColor, fontSize: 20, fontWeight: FontWeight.w400)),
+                          ],
                         ),
-                        Text(
-                          '& Settings',
-                          style: TextStyle(
-                            color: AppTheme.primaryColor,
-                            fontSize: 20,
-                            fontWeight: FontWeight.w400,
-                          ),
-                        ),
+                        Icon(Icons.favorite_border, size: 32, color: AppTheme.primaryColor),
                       ],
                     ),
-                    Icon(Icons.favorite_border, size: 32, color: AppTheme.primaryColor),
-                  ],
-                ),
-                const SizedBox(height: 20),
-                const Text('Personal Details', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                const SizedBox(height: 10),
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    border: Border.all(color: AppTheme.primaryColor.withOpacity(0.4)),
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: _EditableProfileCard(),
-                ),
-                const SizedBox(height: 24),
-                const Text('Others', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                const SizedBox(height: 10),
-                Container(
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.black12),
-                  ),
-                  child: Column(
-                    children: [
-                      ListTile(
-                        leading: Icon(Icons.verified, color: AppTheme.primaryColor),
-                        title: const Text('Agreement Policy'),
-                        trailing: const Icon(Icons.chevron_right),
-                        onTap: () {},
-                      ),
-                      const Divider(height: 0),
-                      ListTile(
-                        leading: Icon(Icons.help_outline, color: AppTheme.primaryColor),
-                        title: const Text('Help & Feedback'),
-                        trailing: const Icon(Icons.chevron_right),
-                        onTap: () {},
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 24),
-                const Text('Code', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                const SizedBox(height: 10),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: const [
-                    _CodeCircle(number: '5'),
-                    _CodeCircle(number: '9'),
-                    _CodeCircle(number: '5'),
-                    _CodeCircle(number: '3'),
-                  ],
-                ),
-                const SizedBox(height: 24),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: () {
-                      Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false);
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.redAccent,
-                      shape: RoundedRectangleBorder(
+                    const SizedBox(height: 20),
+                    const Text('Personal Details', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                    const SizedBox(height: 10),
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        border: Border.all(color: AppTheme.primaryColor.withOpacity(0.4)),
                         borderRadius: BorderRadius.circular(16),
                       ),
+                      child: _EditableProfileCard(uid: uid, data: data),
                     ),
-                    child: const Text('Sign Out', style: TextStyle(fontWeight: FontWeight.bold)),
-                  ),
+                    const SizedBox(height: 24),
+                    const Text('Others', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                    const SizedBox(height: 10),
+                    Container(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.black12),
+                      ),
+                      child: Column(
+                        children: [
+                          ListTile(
+                            leading: Icon(Icons.verified, color: AppTheme.primaryColor),
+                            title: const Text('Agreement Policy'),
+                            trailing: const Icon(Icons.chevron_right),
+                            onTap: () {},
+                          ),
+                          const Divider(height: 0),
+                          ListTile(
+                            leading: Icon(Icons.help_outline, color: AppTheme.primaryColor),
+                            title: const Text('Help & Feedback'),
+                            trailing: const Icon(Icons.chevron_right),
+                            onTap: () {},
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    const Text('Your Display Code', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                    const SizedBox(height: 4),
+                    const Text(
+                      'Share this with your caregiver so they can add you.',
+                      style: TextStyle(fontSize: 13, color: Colors.black54),
+                    ),
+                    const SizedBox(height: 10),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      children: List.generate(4, (i) => _CodeCircle(
+                        number: i < displayId.length ? displayId[i] : '-',
+                      )),
+                    ),
+                    const SizedBox(height: 24),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: () async {
+                          await AuthService().signOut();
+                          if (context.mounted) {
+                            Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false);
+                          }
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.redAccent,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                        ),
+                        child: const Text('Sign Out', style: TextStyle(fontWeight: FontWeight.bold)),
+                      ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
-          ),
+              ),
+            );
+          },
         ),
       ),
     );
   }
 }
 
-
 class _EditableProfileCard extends StatefulWidget {
-  const _EditableProfileCard({Key? key}) : super(key: key);
+  final String uid;
+  final Map<String, dynamic>? data;
+
+  const _EditableProfileCard({required this.uid, required this.data});
 
   @override
   State<_EditableProfileCard> createState() => _EditableProfileCardState();
 }
 
 class _EditableProfileCardState extends State<_EditableProfileCard> {
-  final TextEditingController nameController = TextEditingController(text: 'John Davis Jr');
-  final TextEditingController ageController = TextEditingController(text: '22 years old');
-  final TextEditingController emailController = TextEditingController(text: 'johndavis@gmail.com');
-  final TextEditingController phoneController = TextEditingController(text: '+233 596719305');
+  late final TextEditingController nameController;
+  late final TextEditingController ageController;
+  late final TextEditingController emailController;
+  late final TextEditingController phoneController;
+  bool _saving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    final d = widget.data;
+    nameController  = TextEditingController(text: d?['fullName'] as String? ?? '');
+    ageController   = TextEditingController(text: d?['age']?.toString() ?? '');
+    emailController = TextEditingController(text: d?['email'] as String? ?? '');
+    phoneController = TextEditingController(text: d?['phone'] as String? ?? '');
+  }
+
+  @override
+  void didUpdateWidget(_EditableProfileCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.data != widget.data && widget.data != null) {
+      final d = widget.data!;
+      nameController.text  = d['fullName'] as String? ?? nameController.text;
+      ageController.text   = d['age']?.toString() ?? ageController.text;
+      emailController.text = d['email'] as String? ?? emailController.text;
+      phoneController.text = d['phone'] as String? ?? phoneController.text;
+    }
+  }
+
+  @override
+  void dispose() {
+    nameController.dispose();
+    ageController.dispose();
+    emailController.dispose();
+    phoneController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _save() async {
+    setState(() => _saving = true);
+    try {
+      await FirebaseFirestore.instance.collection('users').doc(widget.uid).update({
+        'fullName': nameController.text.trim(),
+        'age':      ageController.text.trim(),
+        'phone':    phoneController.text.trim(),
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Profile updated.')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -163,9 +223,9 @@ class _EditableProfileCardState extends State<_EditableProfileCard> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _EditableProfileField(label: 'Name', controller: nameController),
-                  _EditableProfileField(label: 'Age', controller: ageController),
-                  _EditableProfileField(label: 'Email', controller: emailController),
+                  _EditableProfileField(label: 'Name',  controller: nameController),
+                  _EditableProfileField(label: 'Age',   controller: ageController),
+                  _EditableProfileField(label: 'Email', controller: emailController, readOnly: true),
                   _EditableProfileField(label: 'Phone', controller: phoneController),
                 ],
               ),
@@ -176,14 +236,14 @@ class _EditableProfileCardState extends State<_EditableProfileCard> {
         SizedBox(
           width: double.infinity,
           child: ElevatedButton(
-            onPressed: () {},
+            onPressed: _saving ? null : _save,
             style: ElevatedButton.styleFrom(
               backgroundColor: AppTheme.primaryColor,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
             ),
-            child: const Text('Save Changes', style: TextStyle(fontWeight: FontWeight.bold)),
+            child: _saving
+                ? const CircularProgressIndicator(color: Colors.white)
+                : const Text('Save Changes', style: TextStyle(fontWeight: FontWeight.bold)),
           ),
         ),
       ],
@@ -194,7 +254,8 @@ class _EditableProfileCardState extends State<_EditableProfileCard> {
 class _EditableProfileField extends StatelessWidget {
   final String label;
   final TextEditingController controller;
-  const _EditableProfileField({required this.label, required this.controller});
+  final bool readOnly;
+  const _EditableProfileField({required this.label, required this.controller, this.readOnly = false});
 
   @override
   Widget build(BuildContext context) {
@@ -206,7 +267,11 @@ class _EditableProfileField extends StatelessWidget {
           Expanded(
             child: TextField(
               controller: controller,
-              style: const TextStyle(fontWeight: FontWeight.w500),
+              readOnly: readOnly,
+              style: TextStyle(
+                fontWeight: FontWeight.w500,
+                color: readOnly ? Colors.black45 : Colors.black87,
+              ),
               decoration: const InputDecoration(
                 isDense: true,
                 contentPadding: EdgeInsets.symmetric(vertical: 2, horizontal: 4),
@@ -235,10 +300,7 @@ class _CodeCircle extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
       ),
       child: Center(
-        child: Text(
-          number,
-          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
-        ),
+        child: Text(number, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
       ),
     );
   }
@@ -253,43 +315,14 @@ class _BottomNavBar extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.all(16),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      decoration: BoxDecoration(
-        color: Colors.black,
-        borderRadius: BorderRadius.circular(24),
-      ),
+      decoration: BoxDecoration(color: Colors.black, borderRadius: BorderRadius.circular(24)),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          _NavBarItem(
-            icon: Icons.home,
-            label: selectedIndex == 0 ? 'Home' : '',
-            selected: selectedIndex == 0,
-            onTap: () {
-              Navigator.of(context).pushReplacementNamed('/home');
-            },
-          ),
-          _NavBarItem(
-            icon: Icons.calendar_today,
-            label: selectedIndex == 1 ? 'History' : '',
-            selected: selectedIndex == 1,
-            onTap: () {
-              Navigator.of(context).pushReplacementNamed('/history');
-            },
-          ),
-          _NavBarItem(
-            icon: Icons.add,
-            label: selectedIndex == 2 ? 'Add' : '',
-            selected: selectedIndex == 2,
-            onTap: () {
-              Navigator.of(context).pushReplacementNamed('/add');
-            },
-          ),
-          _NavBarItem(
-            icon: Icons.menu,
-            label: selectedIndex == 3 ? 'More' : '',
-            selected: selectedIndex == 3,
-            onTap: () {},
-          ),
+          _NavBarItem(icon: Icons.home, label: selectedIndex == 0 ? 'Home' : '', selected: selectedIndex == 0, onTap: () => Navigator.of(context).pushReplacementNamed('/home')),
+          _NavBarItem(icon: Icons.calendar_today, label: selectedIndex == 1 ? 'History' : '', selected: selectedIndex == 1, onTap: () => Navigator.of(context).pushReplacementNamed('/history')),
+          _NavBarItem(icon: Icons.add, label: selectedIndex == 2 ? 'Add' : '', selected: selectedIndex == 2, onTap: () => Navigator.of(context).pushReplacementNamed('/add')),
+          _NavBarItem(icon: Icons.menu, label: selectedIndex == 3 ? 'More' : '', selected: selectedIndex == 3, onTap: () {}),
         ],
       ),
     );
@@ -302,12 +335,7 @@ class _NavBarItem extends StatelessWidget {
   final bool selected;
   final VoidCallback onTap;
 
-  const _NavBarItem({
-    required this.icon,
-    required this.label,
-    required this.selected,
-    required this.onTap,
-  });
+  const _NavBarItem({required this.icon, required this.label, required this.selected, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -318,14 +346,7 @@ class _NavBarItem extends StatelessWidget {
         children: [
           Icon(icon, color: selected ? AppTheme.primaryColor : Colors.white, size: 28),
           if (label.isNotEmpty)
-            Text(
-              label,
-              style: TextStyle(
-                color: selected ? AppTheme.primaryColor : Colors.white,
-                fontWeight: FontWeight.bold,
-                fontSize: 12,
-              ),
-            ),
+            Text(label, style: TextStyle(color: selected ? AppTheme.primaryColor : Colors.white, fontWeight: FontWeight.bold, fontSize: 12)),
         ],
       ),
     );
