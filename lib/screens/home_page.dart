@@ -368,7 +368,6 @@ class _ScheduleCardState extends State<_ScheduleCard> {
 
   bool get _isTakeEnabled {
     final status = widget.slot.status;
-    if (status == 'Upcoming') return true;
     if (status == 'Completed' || status == 'Missed') return false;
     final diff = DateTime.now().difference(widget.slot.scheduledAt).inMinutes.abs();
     return diff <= 30;
