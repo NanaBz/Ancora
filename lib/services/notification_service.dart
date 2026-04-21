@@ -93,14 +93,20 @@ class NotificationService {
   static Future<void> deleteCurrentToken() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
-    final token = await FirebaseMessaging.instance.getToken();
-    if (token == null) return;
-    await FirebaseFirestore.instance
-        .collection('users')
-        .doc(user.uid)
-        .collection('fcmTokens')
-        .doc(token)
-        .delete();
+    try {
+      final token = await FirebaseMessaging.instance.getToken();
+      if (token != null) {
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid)
+            .collection('fcmTokens')
+            .doc(token)
+            .delete();
+      }
+      await FirebaseMessaging.instance.deleteToken();
+    } catch (e, st) {
+      debugPrint('deleteCurrentToken failed: $e\n$st');
+    }
   }
 
   static Future<void> scheduleMedication({

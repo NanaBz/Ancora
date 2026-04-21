@@ -60,12 +60,14 @@ class HomePage extends StatelessWidget {
                           style: TextStyle(color: AppTheme.primaryColor, fontSize: 20, fontWeight: FontWeight.w400),
                         ),
                         const SizedBox(height: 24),
-                        Container(
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            border: Border.all(color: AppTheme.primaryColor, width: 1.5),
+                        Card(
+                          color: AppTheme.featureCardColor,
+                          shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(16),
+                            side: BorderSide(color: AppTheme.primaryColor.withValues(alpha: 0.35), width: 1.5),
                           ),
+                          child: Padding(
+                          padding: const EdgeInsets.all(16),
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
@@ -97,6 +99,7 @@ class HomePage extends StatelessWidget {
                                 ],
                               ),
                             ],
+                          ),
                           ),
                         ),
                         const SizedBox(height: 32),
@@ -484,7 +487,7 @@ class _BottomNavBar extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.all(16),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      decoration: BoxDecoration(color: Colors.black, borderRadius: BorderRadius.circular(24)),
+      decoration: BoxDecoration(color: AppTheme.navBarDark, borderRadius: BorderRadius.circular(24)),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [

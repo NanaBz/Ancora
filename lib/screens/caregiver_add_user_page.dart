@@ -186,7 +186,6 @@ class _CaregiverAddUserPageState extends State<CaregiverAddUserPage> {
                           maxLength: 4,
                           decoration: InputDecoration(
                             labelText: "Patient's 4-digit ID",
-                            hintText: 'eg. 5953',
                             border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(12)),
                             counterText: '',
@@ -273,7 +272,7 @@ class _CaregiverBottomNavBar extends StatelessWidget {
       margin: const EdgeInsets.all(16),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       decoration: BoxDecoration(
-        color: Colors.black,
+        color: AppTheme.navBarDark,
         borderRadius: BorderRadius.circular(24),
       ),
       child: Row(

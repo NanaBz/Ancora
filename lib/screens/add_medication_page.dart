@@ -216,7 +216,6 @@ class _AddMedicationPageState extends State<AddMedicationPage> {
                   child: TextField(
                     controller: _nameCtrl,
                     decoration: InputDecoration(
-                      hintText: 'eg. Paracetamol',
                       border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12)),
                       contentPadding: const EdgeInsets.symmetric(
@@ -235,7 +234,6 @@ class _AddMedicationPageState extends State<AddMedicationPage> {
                           controller: _dosageCtrl,
                           keyboardType: TextInputType.number,
                           decoration: InputDecoration(
-                            hintText: 'eg. 500',
                             border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(12)),
                             contentPadding: const EdgeInsets.symmetric(
@@ -507,7 +505,7 @@ class _BottomNavBar extends StatelessWidget {
       margin: const EdgeInsets.all(16),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       decoration: BoxDecoration(
-        color: Colors.black,
+        color: AppTheme.navBarDark,
         borderRadius: BorderRadius.circular(24),
       ),
       child: Row(

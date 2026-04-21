@@ -1,15 +1,13 @@
 importScripts("https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js");
 importScripts("https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js");
 
-// Copy this file to firebase-messaging-sw.js and fill in your Firebase web config.
-// Get these values from: Firebase Console → Project Settings → Your apps → Web app → SDK setup
 firebase.initializeApp({
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_PROJECT_ID.firebasestorage.app",
-  messagingSenderId: "YOUR_SENDER_ID",
-  appId: "YOUR_APP_ID",
+  apiKey: "AIzaSyDwCrSVfTJFopHRkHtQHyAHFc1eHD-CtSU",
+  authDomain: "ancora-medi.firebaseapp.com",
+  projectId: "ancora-medi",
+  storageBucket: "ancora-medi.firebasestorage.app",
+  messagingSenderId: "476262549954",
+  appId: "1:476262549954:web:4711235bd819d32e652e5b",
 });
 
 const messaging = firebase.messaging();

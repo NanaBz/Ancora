@@ -96,9 +96,16 @@ class MorePage extends StatelessWidget {
                       width: double.infinity,
                       child: ElevatedButton(
                         onPressed: () async {
-                          await AuthService().signOut();
-                          if (context.mounted) {
+                          try {
+                            await AuthService().signOut();
+                            if (!context.mounted) return;
                             Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false);
+                          } catch (e) {
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text('Could not sign out: $e')),
+                              );
+                            }
                           }
                         },
                         style: ElevatedButton.styleFrom(
@@ -315,7 +322,7 @@ class _BottomNavBar extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.all(16),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      decoration: BoxDecoration(color: Colors.black, borderRadius: BorderRadius.circular(24)),
+      decoration: BoxDecoration(color: AppTheme.navBarDark, borderRadius: BorderRadius.circular(24)),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [

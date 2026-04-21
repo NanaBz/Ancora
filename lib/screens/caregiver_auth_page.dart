@@ -6,55 +6,66 @@ class CaregiverAuthPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+
     return Scaffold(
-      backgroundColor: Colors.white,
-      body: SafeArea(
-        child: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.groups, size: 60, color: AppTheme.primaryColor),
-              const SizedBox(height: 24),
-              const Text(
-                'Caregiver Login or Sign Up',
-                style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 32),
-              SizedBox(
-                width: 220,
-                child: Column(
-                  children: [
-                    ElevatedButton(
-                      onPressed: () {
-                        Navigator.of(context).pushNamed('/caregiver-login');
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppTheme.primaryColor,
-                        minimumSize: const Size.fromHeight(48),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(24),
-                        ),
-                      ),
-                      child: const Text('Sign In', style: TextStyle(fontSize: 18)),
-                    ),
-                    const SizedBox(height: 16),
-                    ElevatedButton(
-                      onPressed: () {
-                        Navigator.of(context).pushNamed('/caregiver-signup');
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppTheme.primaryColor,
-                        minimumSize: const Size.fromHeight(48),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(24),
-                        ),
-                      ),
-                      child: const Text('Sign Up', style: TextStyle(fontSize: 18)),
-                    ),
-                  ],
+      body: Container(
+        width: double.infinity,
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Colors.white, AppTheme.pageBackground],
+          ),
+        ),
+        child: SafeArea(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            child: Column(
+              children: [
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: IconButton(
+                    icon: Icon(Icons.arrow_back, color: Theme.of(context).colorScheme.onSurface),
+                    onPressed: () => Navigator.of(context).pop(),
+                  ),
                 ),
-              ),
-            ],
+                const SizedBox(height: 8),
+                Icon(Icons.groups_outlined, size: 64, color: AppTheme.primaryColor),
+                const SizedBox(height: 20),
+                Text(
+                  'Caregiver',
+                  style: textTheme.headlineMedium?.copyWith(
+                    color: AppTheme.primaryColor,
+                    fontWeight: FontWeight.w800,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Sign in to support patients, or create an account to get started.',
+                  style: textTheme.bodyLarge?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 40),
+                ElevatedButton(
+                  onPressed: () {
+                    Navigator.of(context).pushNamed('/caregiver-login');
+                  },
+                  child: const Text('Sign In'),
+                ),
+                const SizedBox(height: 14),
+                OutlinedButton(
+                  onPressed: () {
+                    Navigator.of(context).pushNamed('/caregiver-signup');
+                  },
+                  child: const Text('Sign Up'),
+                ),
+                const SizedBox(height: 24),
+              ],
+            ),
           ),
         ),
       ),

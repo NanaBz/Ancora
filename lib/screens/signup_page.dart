@@ -108,46 +108,37 @@ class _SignUpPageState extends State<SignUpPage> {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     const SizedBox(height: 8),
-                    const Text(
+                    Text(
                       'Sign Up',
-                      style: TextStyle(
-                        fontSize: 28,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black87,
-                      ),
+                      style: Theme.of(context).textTheme.headlineMedium,
                       textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: 24),
                     _CustomTextField(
                       label: 'Full Name',
-                      hint: 'John Davies Jr',
                       controller: _nameController,
                     ),
                     const SizedBox(height: 16),
                     _CustomTextField(
                       label: 'Email',
-                      hint: 'johndoe@gmail.com',
                       controller: _emailController,
                       keyboardType: TextInputType.emailAddress,
                     ),
                     const SizedBox(height: 16),
                     _CustomTextField(
                       label: 'Password',
-                      hint: '********',
                       controller: _passwordController,
                       obscureText: true,
                     ),
                     const SizedBox(height: 16),
                     _CustomTextField(
                       label: 'Confirm password',
-                      hint: '********',
                       controller: _confirmPasswordController,
                       obscureText: true,
                     ),
                     const SizedBox(height: 16),
                     _CustomTextField(
                       label: 'Phone',
-                      hint: '+233-XX-XXX-XXX',
                       controller: _phoneController,
                       keyboardType: TextInputType.phone,
                     ),
@@ -162,19 +153,16 @@ class _SignUpPageState extends State<SignUpPage> {
                     const SizedBox(height: 28),
                     ElevatedButton(
                       onPressed: _loading ? null : _signUp,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppTheme.primaryColor,
-                        minimumSize: const Size.fromHeight(48),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(24),
-                        ),
-                      ),
                       child: _loading
-                          ? const CircularProgressIndicator(color: Colors.white)
-                          : const Text(
-                              'Sign Up',
-                              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                            ),
+                          ? SizedBox(
+                              height: 22,
+                              width: 22,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Theme.of(context).colorScheme.onPrimary,
+                              ),
+                            )
+                          : const Text('Sign Up'),
                     ),
                     const SizedBox(height: 16),
                     Row(
@@ -186,9 +174,10 @@ class _SignUpPageState extends State<SignUpPage> {
                           child: Text(
                             'Sign in',
                             style: TextStyle(
-                              color: AppTheme.primaryColor,
-                              fontWeight: FontWeight.bold,
+                              color: Theme.of(context).colorScheme.primary,
+                              fontWeight: FontWeight.w700,
                               decoration: TextDecoration.underline,
+                              decorationColor: Theme.of(context).colorScheme.primary,
                             ),
                           ),
                         ),
@@ -208,14 +197,12 @@ class _SignUpPageState extends State<SignUpPage> {
 
 class _CustomTextField extends StatelessWidget {
   final String label;
-  final String hint;
   final TextEditingController controller;
   final bool obscureText;
   final TextInputType? keyboardType;
 
   const _CustomTextField({
     required this.label,
-    required this.hint,
     required this.controller,
     this.obscureText = false,
     this.keyboardType,
@@ -232,21 +219,7 @@ class _CustomTextField extends StatelessWidget {
           controller: controller,
           obscureText: obscureText,
           keyboardType: keyboardType,
-          decoration: InputDecoration(
-            hintText: hint,
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: Colors.black26),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: AppTheme.primaryColor, width: 2),
-            ),
-            fillColor: Colors.white,
-            filled: true,
-          ),
+          decoration: InputDecoration().applyDefaults(Theme.of(context).inputDecorationTheme),
         ),
       ],
     );

@@ -2,6 +2,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'theme/app_theme.dart';
 import 'firebase_options.dart';
 import 'services/notification_service.dart';
 import 'screens/landing_page.dart';
@@ -34,13 +35,10 @@ class AncoraApp extends StatelessWidget {
     return MaterialApp(
       title: 'Ancora',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        fontFamily: 'Roboto',
-        primaryColor: const Color(0xFF2CB9B0),
-        scaffoldBackgroundColor: Colors.white,
-      ),
-      home: const AuthWrapper(),
+      theme: AppTheme.lightTheme,
+      initialRoute: '/',
       routes: {
+        '/': (context) => const AuthWrapper(),
         '/signup': (context) => const SignUpPage(),
         '/login': (context) => const LoginPage(),
         '/home': (context) => const HomePage(),
@@ -68,8 +66,10 @@ class AuthWrapper extends StatelessWidget {
       stream: FirebaseAuth.instance.authStateChanges(),
       builder: (context, authSnap) {
         if (authSnap.connectionState == ConnectionState.waiting) {
-          return const Scaffold(
-            body: Center(child: CircularProgressIndicator()),
+          return Scaffold(
+            body: Center(
+              child: CircularProgressIndicator(color: AppTheme.primaryColor),
+            ),
           );
         }
 
@@ -83,8 +83,10 @@ class AuthWrapper extends StatelessWidget {
               .get(),
           builder: (context, userSnap) {
             if (!userSnap.hasData) {
-              return const Scaffold(
-                body: Center(child: CircularProgressIndicator()),
+              return Scaffold(
+                body: Center(
+                  child: CircularProgressIndicator(color: AppTheme.primaryColor),
+                ),
               );
             }
             final data = userSnap.data?.data() as Map<String, dynamic>?;
