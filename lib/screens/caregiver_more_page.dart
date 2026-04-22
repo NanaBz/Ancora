@@ -1,8 +1,12 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import '../theme/app_theme.dart';
 import '../services/auth_service.dart';
+import '../services/profile_photo_service.dart';
+import 'agreement_policy_page.dart';
+import 'help_feedback_page.dart';
 
 class CaregiverMorePage extends StatelessWidget {
   const CaregiverMorePage({Key? key}) : super(key: key);
@@ -62,7 +66,7 @@ class CaregiverMorePage extends StatelessWidget {
                     Container(
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
-                        border: Border.all(color: AppTheme.primaryColor.withOpacity(0.4)),
+                        border: Border.all(color: AppTheme.primaryColor.withValues(alpha: 0.4)),
                         borderRadius: BorderRadius.circular(16),
                       ),
                       child: _EditableProfileCard(uid: uid, data: data),
@@ -81,14 +85,26 @@ class CaregiverMorePage extends StatelessWidget {
                             leading: Icon(Icons.verified, color: AppTheme.primaryColor),
                             title: const Text('Agreement Policy'),
                             trailing: const Icon(Icons.chevron_right),
-                            onTap: () {},
+                            onTap: () {
+                              Navigator.of(context).push(
+                                MaterialPageRoute<void>(
+                                  builder: (context) => const AgreementPolicyPage(),
+                                ),
+                              );
+                            },
                           ),
                           const Divider(height: 0),
                           ListTile(
                             leading: Icon(Icons.help_outline, color: AppTheme.primaryColor),
                             title: const Text('Help & Feedback'),
                             trailing: const Icon(Icons.chevron_right),
-                            onTap: () {},
+                            onTap: () {
+                              Navigator.of(context).push(
+                                MaterialPageRoute<void>(
+                                  builder: (context) => const HelpFeedbackPage(),
+                                ),
+                              );
+                            },
                           ),
                         ],
                       ),
@@ -144,6 +160,7 @@ class _EditableProfileCardState extends State<_EditableProfileCard> {
   late final TextEditingController emailController;
   late final TextEditingController phoneController;
   bool _saving = false;
+  bool _uploadingPhoto = false;
 
   @override
   void initState() {
@@ -176,6 +193,59 @@ class _EditableProfileCardState extends State<_EditableProfileCard> {
     super.dispose();
   }
 
+  Future<void> _pickProfilePhoto() async {
+    if (_uploadingPhoto) return;
+    final source = await showModalBottomSheet<ImageSource?>(
+      context: context,
+      showDragHandle: true,
+      builder: (ctx) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.photo_library_outlined),
+                title: const Text('Choose from gallery'),
+                onTap: () => Navigator.pop(ctx, ImageSource.gallery),
+              ),
+              ListTile(
+                leading: const Icon(Icons.camera_alt_outlined),
+                title: const Text('Take a photo'),
+                onTap: () => Navigator.pop(ctx, ImageSource.camera),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+    if (source == null || !mounted) return;
+    final picker = ImagePicker();
+    final x = await picker.pickImage(
+      source: source,
+      maxWidth: 1200,
+      maxHeight: 1200,
+      imageQuality: 88,
+    );
+    if (x == null || !mounted) return;
+    setState(() => _uploadingPhoto = true);
+    try {
+      await ProfilePhotoService.uploadAndSyncProfileImage(uid: widget.uid, file: x);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Profile photo updated.')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not update photo: $e')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _uploadingPhoto = false);
+    }
+  }
+
   Future<void> _save() async {
     setState(() => _saving = true);
     try {
@@ -202,27 +272,34 @@ class _EditableProfileCardState extends State<_EditableProfileCard> {
 
   @override
   Widget build(BuildContext context) {
+    final photoUrl = widget.data?['photoURL'] as String?;
+
     return Column(
       children: [
         Row(
           children: [
             Stack(
+              clipBehavior: Clip.none,
               children: [
-                CircleAvatar(
-                  radius: 32,
-                  backgroundColor: Colors.grey[200],
-                  child: const Icon(Icons.person, size: 40, color: Colors.black38),
-                ),
+                _CaregiverProfileAvatar(photoUrl: photoUrl, uploading: _uploadingPhoto),
                 Positioned(
                   bottom: 0,
                   right: 0,
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: AppTheme.primaryColor,
-                      shape: BoxShape.circle,
-                      border: Border.all(color: Colors.white, width: 2),
+                  child: Material(
+                    color: AppTheme.primaryColor,
+                    shape: const CircleBorder(),
+                    child: InkWell(
+                      onTap: _uploadingPhoto ? null : _pickProfilePhoto,
+                      customBorder: const CircleBorder(),
+                      child: Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.white, width: 2),
+                        ),
+                        child: const Icon(Icons.add, size: 18, color: Colors.white),
+                      ),
                     ),
-                    child: const Icon(Icons.add, size: 18, color: Colors.white),
                   ),
                 ),
               ],
@@ -256,6 +333,53 @@ class _EditableProfileCardState extends State<_EditableProfileCard> {
           ),
         ),
       ],
+    );
+  }
+}
+
+class _CaregiverProfileAvatar extends StatelessWidget {
+  final String? photoUrl;
+  final bool uploading;
+
+  const _CaregiverProfileAvatar({required this.photoUrl, required this.uploading});
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 64,
+      height: 64,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          ClipOval(
+            child: (photoUrl != null && photoUrl!.isNotEmpty)
+                ? Image.network(
+                    photoUrl!,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) => _cph(),
+                  )
+                : _cph(),
+          ),
+          if (uploading)
+            ColoredBox(
+              color: Colors.black26,
+              child: const Center(
+                child: SizedBox(
+                  width: 24,
+                  height: 24,
+                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _cph() {
+    return ColoredBox(
+      color: Colors.grey[200]!,
+      child: const Icon(Icons.person, size: 40, color: Colors.black38),
     );
   }
 }
