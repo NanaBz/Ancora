@@ -4,3 +4,4 @@ const kMissedSweepTask = 'missedDoseSweep';
 void callbackDispatcher() {}
 Future<void> initWorkmanager() async {}
 Future<void> runMissedDoseSweep() async {}
+Future<void> rescheduleAll() async {}

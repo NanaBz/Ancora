@@ -6,6 +6,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:workmanager/workmanager.dart';
 import '../firebase_options.dart';
+import 'notification_service.dart';
 
 const kMissedSweepTask = 'missedDoseSweep';
 
@@ -15,7 +16,9 @@ void callbackDispatcher() {
     if (taskName == kMissedSweepTask) {
       await Firebase.initializeApp(
           options: DefaultFirebaseOptions.currentPlatform);
+      await NotificationService.initForIsolate();
       await runMissedDoseSweep();
+      await rescheduleAll();
     }
     return true;
   });

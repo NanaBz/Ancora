@@ -33,7 +33,8 @@ class _CaregiverClientsPageState extends State<CaregiverClientsPage> {
             final profile =
                 profileSnap.data?.data() as Map<String, dynamic>?;
             final name = (profile?['fullName'] as String?) ?? '…';
-            final age = profile?['age'] as int?;
+            final ageRaw = profile?['age'];
+            final age = ageRaw is int ? ageRaw : int.tryParse(ageRaw?.toString() ?? '');
 
             return StreamBuilder<QuerySnapshot>(
               stream: db

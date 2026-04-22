@@ -67,7 +67,7 @@ class _CaregiverHomePageState extends State<CaregiverHomePage> {
       stats.add(_PatientStat(
         uid: patientUid,
         fullName: (data['fullName'] as String?) ?? 'Unknown',
-        age: data['age'] as int?,
+        age: data['age'] is int ? data['age'] as int : int.tryParse(data['age']?.toString() ?? ''),
         adherence: adherence,
       ));
     }

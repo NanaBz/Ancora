@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart' show debugPrint, kIsWeb;
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:flutter_timezone/flutter_timezone.dart';
 import 'package:timezone/data/latest.dart' as tz_data;
 import 'package:timezone/timezone.dart' as tz;
 
@@ -20,9 +21,25 @@ const _kAndroidNotifDetails = AndroidNotificationDetails(
 );
 const _kNotifDetails = NotificationDetails(android: _kAndroidNotifDetails);
 
+AndroidFlutterLocalNotificationsPlugin? get _androidPlugin =>
+    _localNotifs.resolvePlatformSpecificImplementation<
+        AndroidFlutterLocalNotificationsPlugin>();
+
+// Minutes before the dose time at which each cascading reminder fires.
+// Index 0..3 are pre-dose warnings; index 4 fires at the exact dose time.
+const _kReminderOffsets = [-60, -30, -10, -5, 0];
+
 class NotificationService {
   static Future<void> init() async {
     tz_data.initializeTimeZones();
+    if (!kIsWeb) {
+      try {
+        final tzName = await FlutterTimezone.getLocalTimezone();
+        tz.setLocalLocation(tz.getLocation(tzName));
+      } catch (e) {
+        debugPrint('Timezone setup failed, defaulting to UTC: $e');
+      }
+    }
 
     if (!kIsWeb) {
       await _localNotifs
@@ -42,6 +59,9 @@ class NotificationService {
         ),
       );
 
+      // Request exact alarm permission on Android 12+ (API 31+).
+      await _androidPlugin?.requestExactAlarmsPermission();
+
       await initWorkmanager();
     }
 
@@ -50,6 +70,24 @@ class NotificationService {
     } catch (e) {
       debugPrint('FCM init skipped: $e');
     }
+  }
+
+  /// Call this inside a workmanager isolate before using any local notification
+  /// APIs, since init() only runs in the main isolate.
+  static Future<void> initForIsolate() async {
+    if (kIsWeb) return;
+    tz_data.initializeTimeZones();
+    try {
+      final tzName = await FlutterTimezone.getLocalTimezone();
+      tz.setLocalLocation(tz.getLocation(tzName));
+    } catch (e) {
+      debugPrint('Timezone setup failed, defaulting to UTC: $e');
+    }
+    await _localNotifs.initialize(
+      settings: const InitializationSettings(
+        android: AndroidInitializationSettings('@mipmap/ic_launcher'),
+      ),
+    );
   }
 
   static Future<void> _initFcm() async {
@@ -90,6 +128,15 @@ class NotificationService {
     });
   }
 
+  /// Returns true if exact alarms are permitted on this device.
+  /// Call from the UI and show a dialog prompting the user to enable
+  /// Settings → Apps → Ancora → Special App Access → Alarms & Reminders if false.
+  static Future<bool> canScheduleExact() async {
+    if (kIsWeb) return false;
+    final granted = await _androidPlugin?.requestExactAlarmsPermission();
+    return granted ?? false;
+  }
+
   static Future<void> deleteCurrentToken() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
@@ -123,7 +170,7 @@ class NotificationService {
     final now = DateTime.now();
     final window = now.add(const Duration(hours: 48));
     final idBase = medId.hashCode.abs() % 100000;
-    int idCounter = 0;
+    int slotIndex = 0;
 
     for (int dayOffset = 0; dayOffset <= 2; dayOffset++) {
       final day = now.add(Duration(days: dayOffset));
@@ -137,20 +184,72 @@ class NotificationService {
         if (parts.length != 2) continue;
         final h = int.tryParse(parts[0]) ?? 0;
         final m = int.tryParse(parts[1]) ?? 0;
-        final scheduledAt =
-            DateTime(day.year, day.month, day.day, h, m);
-        if (scheduledAt.isBefore(now) || scheduledAt.isAfter(window)) {
-          continue;
+        final scheduledAt = DateTime(day.year, day.month, day.day, h, m);
+
+        for (int ri = 0; ri < _kReminderOffsets.length; ri++) {
+          final offsetMins = _kReminderOffsets[ri];
+          final fireAt = scheduledAt.add(Duration(minutes: offsetMins));
+          if (fireAt.isBefore(now) || fireAt.isAfter(window)) continue;
+
+          final String title;
+          final String body;
+          if (offsetMins == 0) {
+            title = 'Time for $medName!';
+            body = 'Take your dose now.';
+          } else if (offsetMins == -60) {
+            title = '1 hour until your $medName dose';
+            body = 'Tap to prepare for your upcoming dose.';
+          } else {
+            title = '${-offsetMins} minutes until your $medName dose';
+            body = 'Tap to prepare for your upcoming dose.';
+          }
+
+          await _scheduleOne(
+            id: idBase + slotIndex * 5 + ri,
+            title: title,
+            body: body,
+            fireAt: fireAt,
+          );
         }
 
+        slotIndex++;
+      }
+    }
+  }
+
+  // Tries alarmClock mode first; falls back to exactAllowWhileIdle if
+  // USE_EXACT_ALARM / SCHEDULE_EXACT_ALARM are not granted (common on Samsung).
+  static Future<void> _scheduleOne({
+    required int id,
+    required String title,
+    required String body,
+    required DateTime fireAt,
+  }) async {
+    final tzDate = tz.TZDateTime.from(fireAt, tz.local);
+    try {
+      await _localNotifs.zonedSchedule(
+        id: id,
+        title: title,
+        body: body,
+        scheduledDate: tzDate,
+        notificationDetails: _kNotifDetails,
+        androidScheduleMode: AndroidScheduleMode.alarmClock,
+      );
+      debugPrint('Notification $id scheduled (alarmClock) for $fireAt');
+    } catch (e) {
+      debugPrint('alarmClock mode failed for $id ($e); retrying with exactAllowWhileIdle');
+      try {
         await _localNotifs.zonedSchedule(
-          id: idBase + idCounter++,
-          title: 'Time for $medName',
-          body: 'Tap to confirm you took your dose',
-          scheduledDate: tz.TZDateTime.from(scheduledAt, tz.local),
+          id: id,
+          title: title,
+          body: body,
+          scheduledDate: tzDate,
           notificationDetails: _kNotifDetails,
           androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
         );
+        debugPrint('Notification $id scheduled (exactAllowWhileIdle) for $fireAt');
+      } catch (e2) {
+        debugPrint('Both schedule modes failed for notification $id: $e2');
       }
     }
   }
@@ -158,8 +257,49 @@ class NotificationService {
   static Future<void> cancelMedication(String medId) async {
     if (kIsWeb) return;
     final base = medId.hashCode.abs() % 100000;
-    for (int i = 0; i < 20; i++) {
+    for (int i = 0; i < 75; i++) {
       await _localNotifs.cancel(id: base + i);
     }
+  }
+}
+
+/// Fetches all active medications for the current user and re-schedules
+/// cascading reminders for each. Called by the workmanager sweep so
+/// notifications never go stale. Must be top-level for workmanager isolate access.
+Future<void> rescheduleAll() async {
+  if (kIsWeb) return;
+
+  final user = FirebaseAuth.instance.currentUser;
+  if (user == null) return;
+
+  final db = FirebaseFirestore.instance;
+  final now = DateTime.now();
+  final today = DateTime(now.year, now.month, now.day);
+
+  final medsSnap = await db
+      .collection('users')
+      .doc(user.uid)
+      .collection('medications')
+      .get();
+
+  for (final med in medsSnap.docs) {
+    final data = med.data();
+    if (data['archived'] == true) continue;
+
+    final startTs = (data['startDate'] as Timestamp?)?.toDate();
+    final endTs = (data['endDate'] as Timestamp?)?.toDate();
+    if (startTs == null || endTs == null) continue;
+
+    final startDay = DateTime(startTs.year, startTs.month, startTs.day);
+    final endDay = DateTime(endTs.year, endTs.month, endTs.day);
+    if (today.isBefore(startDay) || today.isAfter(endDay)) continue;
+
+    await NotificationService.scheduleMedication(
+      medId: med.id,
+      medName: (data['name'] as String?) ?? '',
+      intakeTimes: List<String>.from(data['intakeTimes'] ?? []),
+      startDate: startDay,
+      endDate: endDay,
+    );
   }
 }
